@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extractor de Datos de PDF</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 25px;
+            background-color: #f8f9fa;
+            color: #212529;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 850px;
+        }
+        h1 {
+            color: #343a40;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        /* Estilo personalizado para el botón de selección de archivos */
+        .input-file-label {
+            border: 2px dashed #007bff;
+            padding: 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            color: #007bff;
+            font-weight: 500;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .input-file-label:hover {
+            background-color: #e9f5ff;
+        }
+        input[type="file"] {
+            display: none; /* Ocultamos el input original */
+        }
+        #info-archivos {
+            text-align: center;
+            margin-top: 10px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 14px 22px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #a0c9f1;
+            cursor: not-allowed;
+        }
+
+        /* Estilos para la barra de progreso */
+        .progress-container {
+            display: none; /* Oculto por defecto */
+            text-align: center;
+            margin-top: 20px;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            height: 20px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 100%; /* Para una barra indeterminada */
+            background-color: #28a745; /* Color de progreso */
+            border-radius: 5px;
+            animation: progress-animation 1s infinite linear; /* Animación de carga */
+        }
+        @keyframes progress-animation {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .progress-text {
+            color: #555;
+            font-size: 14px;
+        }
+
+        /* Estilo para el total de páginas */
+        .total-paginas {
+            text-align: right;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        /* Estilos de la tabla de resultados */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Extractor de Metadatos de PDF 📄</h1>
+        <form id="upload-form" method="post" enctype="multipart/form-data">
+            <label for="archivos_pdf" class="input-file-label">
+                👆 Haz clic aquí para seleccionar los archivos PDF
+            </label>
+            <input type="file" id="archivos_pdf" name="archivos_pdf" accept=".pdf" multiple required>
+            <span id="info-archivos">No se ha seleccionado ningún archivo.</span>
+            <button type="submit" id="analizar-btn">Analizar Archivos</button>
+        </form>
+
+        <div id="progress-area" class="progress-container">
+            <div class="progress-text">Analizando archivos, por favor espera...</div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill"></div>
+            </div>
+        </div>
+
+        {% if pdf_varios %}
+            <h2>Resultados del Análisis</h2>
+            
+            {% if total_pag > 0 %}
+                <div class="total-paginas">
+                    Total de Páginas: {{ total_pag }}
+                </div>
+            {% endif %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre del Archivo</th>
+                        <th>Número de Páginas</th>
+                        <th>Peso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pdf in pdf_varios %}
+                        <tr>
+                            <td>{{ pdf.nombre }}</td>
+                            <td>{{ pdf.paginas if pdf.paginas > 0 else 'Error de lectura' }}</td>
+                            <td>{{ pdf.peso }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+
+    <script>
+        const inputArchivo = document.getElementById('archivos_pdf');
+        const infoArchivos = document.getElementById('info-archivos');
+        const uploadForm = document.getElementById('upload-form');
+        const analizarBtn = document.getElementById('analizar-btn');
+        const progressArea = document.getElementById('progress-area');
+
+        // Actualiza el texto con el número de archivos seleccionados
+        inputArchivo.addEventListener('change', function(){
+            if (this.files.length > 0) {
+                infoArchivos.textContent = `${this.files.length} archivo(s) seleccionado(s).`;
+            } else {
+                infoArchivos.textContent = 'No se ha seleccionado ningún archivo.';
+            }
+        });
+
+        // Muestra la barra de progreso cuando se envía el formulario
+        uploadForm.addEventListener('submit', function() {
+            // Validar que al menos un archivo PDF esté seleccionado
+            if (inputArchivo.files.length === 0) {
+                alert('Por favor, selecciona al menos un archivo PDF para analizar.');
+                return false; // Evita el envío del formulario
+            }
+
+            progressArea.style.display = 'block'; // Muestra el contenedor de progreso
+            analizarBtn.disabled = true; // Deshabilita el botón para evitar envíos dobles
+            analizarBtn.textContent = 'Analizando...'; // Cambia el texto del botón
+        });
+
+        // Oculta la barra de progreso si la página se carga sin enviar el formulario (ej. recarga manual)
+        // O si ya se muestran resultados (lo que implica que el proceso ya terminó)
+        window.addEventListener('load', function() {
+            // Si hay resultados, no mostramos la barra de progreso al cargar
+            if (document.querySelector('table')) {
+                progressArea.style.display = 'none';
+                analizarBtn.disabled = false;
+                analizarBtn.textContent = 'Analizar Archivos';
+            }
+        });
+    </script>
+</body>
+</html>
