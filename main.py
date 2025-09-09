@@ -55,7 +55,7 @@ def inicio():
                         total_paginas=total_paginas+info_pdf['paginas']
 
     # Renderizamos la plantilla HTML, pasándole los datos extraídos
-    return render_template('index.html', pdf_varios=datos_pdf,total_pag=total_paginas)
+    return render_template('template/index.html', pdf_varios=datos_pdf,total_pag=total_paginas)
 
 if __name__ == '__main__':
     # Ejecutamos la aplicación en modo de depuración
