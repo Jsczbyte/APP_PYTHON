@@ -59,4 +59,4 @@ def inicio():
 
 if __name__ == '__main__':
     # Ejecutamos la aplicación en modo de depuración
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0",ports=os.getenv("PORT",default=5000))
